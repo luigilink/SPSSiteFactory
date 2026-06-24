@@ -36,6 +36,14 @@ The initial data model is centered on a SharePoint list named `SiteFactoryReques
 | Completed | Site was created successfully. |
 | Failed | Provisioning failed and needs attention. |
 
+## Views
+
+The provisioning script creates an `All Requests` view when it does not already exist and sets this custom view as the default view. It does not modify the original SharePoint `AllItems.aspx` view.
+
+| View | Purpose | Columns |
+| --- | --- | --- |
+| All Requests | Default administrator view for request follow-up. | Request Title, SiteName, SiteAlias, SiteType, Status, PrimaryOwner, SecondaryOwner, RequestedBy, RequestedDate, SiteUrl |
+
 ## Validation rules
 
 - `SiteAlias` must be URL-safe.

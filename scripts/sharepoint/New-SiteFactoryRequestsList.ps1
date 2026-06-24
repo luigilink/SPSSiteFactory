@@ -418,6 +418,50 @@ function Set-SPSSiteFactoryDefaultField {
     Write-SPSSiteFactoryLog -Message "Renaming default 'Title' column to 'Request Title'."
     Set-PnPField -List $List -Identity 'Title' -Values @{ Title = 'Request Title' } | Out-Null
 }
+
+function Add-SPSSiteFactoryListView {
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [System.String]
+        $List,
+
+        [Parameter(Mandatory = $true)]
+        [System.String]
+        $Title,
+
+        [Parameter(Mandatory = $true)]
+        [System.String[]]
+        $Fields,
+
+        [Parameter()]
+        [System.Boolean]
+        $SetAsDefault = $false
+    )
+
+    $view = Get-PnPView -List $List -Identity $Title -ErrorAction SilentlyContinue
+
+    if ($null -ne $view) {
+        Write-SPSSiteFactoryLog -Message "View '$Title' already exists - skipping."
+        return
+    }
+
+    Write-SPSSiteFactoryLog -Message "Creating view '$Title' ..."
+
+    try {
+        Add-PnPView -List $List -Title $Title -Fields $Fields -ViewType Html -SetAsDefault:$SetAsDefault | Out-Null
+        Write-SPSSiteFactoryLog -Message "View '$Title' created." -Level Success
+    }
+    catch {
+        $catchMessage = @"
+An error occurred while creating view '$Title'.
+List: $List
+Fields: $($Fields -join ', ')
+Exception: $($_.Exception.Message)
+"@
+        Write-Error -Message $catchMessage
+    }
+}
 #endregion
 
 #region main
@@ -453,6 +497,18 @@ try {
     Add-SPSSiteFactoryField -List $listTitle -InternalName 'ApprovedDate' -DisplayName 'Approved Date' -Type DateTime
 
     Set-SPSSiteFactoryDefaultField -List $listTitle
+    Add-SPSSiteFactoryListView -List $listTitle -Title 'All Requests' -Fields @(
+        'Title',
+        'SiteName',
+        'SiteAlias',
+        'SiteType',
+        'Status',
+        'PrimaryOwner',
+        'SecondaryOwner',
+        'RequestedBy',
+        'RequestedDate',
+        'SiteUrl'
+    ) -SetAsDefault $true
 
     if ($ConfigurePermissions) {
         Set-SPSSiteFactoryListGovernance -List $listTitle -Requesters $RequestersGroup -Administrators $AdministratorsGroup
