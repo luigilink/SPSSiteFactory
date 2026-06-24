@@ -10,6 +10,8 @@ import { IReadonlyTheme } from '@microsoft/sp-component-base';
 import * as strings from 'SiteRequestWebPartStrings';
 import SiteRequest from './components/SiteRequest';
 import { ISiteRequestProps } from './components/ISiteRequestProps';
+import { PeopleSearchService } from './services/PeopleSearchService';
+import { SiteRequestService } from './services/SiteRequestService';
 
 export interface ISiteRequestWebPartProps {
 }
@@ -18,14 +20,17 @@ export default class SiteRequestWebPart extends BaseClientSideWebPart<ISiteReque
 
   private _isDarkTheme: boolean = false;
   private _environmentMessage: string = '';
+  private _peopleSearchService!: PeopleSearchService;
+  private _siteRequestService!: SiteRequestService;
 
   public render(): void {
     const element: React.ReactElement<ISiteRequestProps> = React.createElement(
       SiteRequest,
-        {
-        spHttpClient: this.context.spHttpClient,
+      {
+        peopleSearchService: this._peopleSearchService,
+        requestedByLoginName: this.context.pageContext.user.loginName,
+        siteRequestService: this._siteRequestService,
         userDisplayName: this.context.pageContext.user.displayName,
-        webAbsoluteUrl: this.context.pageContext.web.absoluteUrl
       }
     );
 
@@ -33,6 +38,15 @@ export default class SiteRequestWebPart extends BaseClientSideWebPart<ISiteReque
   }
 
   protected onInit(): Promise<void> {
+    this._peopleSearchService = new PeopleSearchService(
+      this.context.spHttpClient,
+      this.context.pageContext.web.absoluteUrl
+    );
+    this._siteRequestService = new SiteRequestService(
+      this.context.spHttpClient,
+      this.context.pageContext.web.absoluteUrl
+    );
+
     return this._getEnvironmentMessage().then(message => {
       this._environmentMessage = message;
     });

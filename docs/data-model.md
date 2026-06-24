@@ -43,3 +43,37 @@ The initial data model is centered on a SharePoint list named `SiteFactoryReques
 - `PrimaryOwner` and `SecondaryOwner` should be different users.
 - `BusinessJustification` is required before submission.
 - `SiteType` must map to a supported provisioning path.
+
+## Provisioning helper
+
+The initial list can be created with the PnP PowerShell helper script:
+
+```powershell
+pwsh ./scripts/sharepoint/New-SiteFactoryRequestsList.ps1 -SiteUrl https://contoso.sharepoint.com/sites/sitefactory
+```
+
+The script requires PowerShell 7.2 or later and PnP.PowerShell. It is idempotent and creates the fields expected by the SPFx submission service.
+
+To apply the V1 direct-submit permission model:
+
+```powershell
+pwsh ./scripts/sharepoint/New-SiteFactoryRequestsList.ps1 `
+  -SiteUrl https://contoso.sharepoint.com/sites/sitefactory `
+  -ConfigurePermissions `
+  -RequestersGroup "Site Factory Requesters" `
+  -AdministratorsGroup "Site Factory Administrators"
+```
+
+## Permission model
+
+The current V1 SPFx implementation writes directly to the `SiteFactoryRequests` list using the current user's SharePoint context. This means requesters must have permission to create list items.
+
+The recommended V1 model is:
+
+| Role | Permission |
+| --- | --- |
+| Requesters | Contribute on `SiteFactoryRequests`, with list item read/write restricted to their own items. |
+| Administrators | Full Control on `SiteFactoryRequests`. |
+| Provisioning identity | Permission level required by the selected provisioning engine. |
+
+The list can be hidden from site navigation, but hiding is not a security boundary. If the requirement is that requesters have access to the form but no direct permission to the backing list, the project should move the submission step behind a trusted workflow or API such as Power Automate, Azure Function, or another app-only backend.

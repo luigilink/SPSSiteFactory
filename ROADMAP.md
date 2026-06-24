@@ -19,6 +19,7 @@ Goal: allow users to submit site creation requests and provision basic SharePoin
 
 - SPFx React web part hosting the site request form.
 - SharePoint list named `SiteFactoryRequests`.
+- Documented V1 list provisioning and direct-submit permission model.
 - Request status lifecycle: `Draft`, `Submitted`, `Approved`, `Provisioning`, `Completed`, `Failed`.
 - Support for basic site types:
   - Team site;
@@ -38,6 +39,7 @@ Goal: allow users to submit site creation requests and provision basic SharePoin
 - A site can be provisioned from a valid request.
 - The request item shows the final status, site URL, and provisioning result.
 - The request form feels polished enough for an internal V1 preview.
+- The list permission model is documented and reproducible.
 
 ## V2 - Governance and templates
 
@@ -46,6 +48,7 @@ Goal: add stronger governance, approval, and reusable site templates.
 ### Scope
 
 - Approval workflow before provisioning.
+- Optional trusted submission path so requesters can use the form without direct access to the backing list.
 - Template-driven provisioning definitions.
 - Hub site association.
 - Sensitivity and classification metadata.
@@ -72,6 +75,7 @@ Goal: evolve SPSSiteFactory into a more complete SharePoint Online site lifecycl
 - API layer for integrations.
 - Configurable visual branding foundation for future company-specific customization.
 - GitHub Actions for packaging and release.
+- GitHub Wiki and `CHANGELOG.md` for product-style documentation and release tracking.
 - Multi-environment deployment guidance.
 - Extended documentation and examples.
 
@@ -103,7 +107,7 @@ Goal: allow organizations to adapt the visual identity and request experience wi
 | Topic | Current direction | Status |
 | --- | --- | --- |
 | Provisioning engine | Power Automate for MVP, Azure Function as a possible evolution | Open |
-| Authentication model | To be defined based on provisioning engine | Open |
+| Authentication model | Direct user-context list write for V1; app-only or workflow-mediated submission for stricter governance later. | Proposed |
 | Template format | JSON-based templates | Proposed |
 | SPFx shape | React web part hosting the request form for V1. List form customizer remains a possible future option. | Decided for V1 |
 | Visual design | Improve V1 form polish now; defer deep company branding customization to V4. | Proposed |

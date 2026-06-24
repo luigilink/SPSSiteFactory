@@ -58,12 +58,29 @@ Start the local SPFx workbench:
 npm run start
 ```
 
+Create the initial SharePoint request list with PnP PowerShell:
+
+```powershell
+pwsh ./scripts/sharepoint/New-SiteFactoryRequestsList.ps1 -SiteUrl https://contoso.sharepoint.com/sites/spssitefactory
+```
+
+Create the list and apply the V1 direct-submit permission model:
+
+```powershell
+pwsh ./scripts/sharepoint/New-SiteFactoryRequestsList.ps1 `
+  -SiteUrl https://contoso.sharepoint.com/sites/spssitefactory `
+  -ConfigurePermissions `
+  -RequestersGroup "Site Factory Requesters" `
+  -AdministratorsGroup "Site Factory Administrators"
+```
+
 ## Documentation
 
 - [Roadmap](ROADMAP.md)
 - [Architecture](docs/architecture.md)
 - [Data model](docs/data-model.md)
 - [Design guidelines](docs/design-guidelines.md)
+- [Prerequisites and governance](docs/prerequisites.md)
 - [Provisioning flow](docs/provisioning-flow.md)
 
 ## Status

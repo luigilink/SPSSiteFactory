@@ -14,35 +14,22 @@ import {
   Text,
   TextField
 } from '@fluentui/react';
-import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
+import { siteRequestListTitle } from '../constants/siteRequestConstants';
+import { ISiteRequestOwner, ISiteRequestSubmissionResult } from '../models/ISiteRequestPayload';
+import { PeopleSearchService } from '../services/PeopleSearchService';
 import styles from './SiteRequest.module.scss';
 import type { ISiteRequestProps } from './ISiteRequestProps';
 
 interface ISiteRequestFormState {
+  errorMessage: string;
   siteName: string;
   siteAlias: string;
   siteType: string;
   businessJustification: string;
   primaryOwner: string;
   secondaryOwner: string;
-  submittedLocally: boolean;
-}
-
-interface IClientPeoplePickerEntityData {
-  Department?: string;
-  Email?: string;
-  Title?: string;
-}
-
-interface IClientPeoplePickerEntity {
-  Description?: string;
-  DisplayText?: string;
-  EntityData?: IClientPeoplePickerEntityData;
-  Key?: string;
-}
-
-interface IClientPeoplePickerResponse {
-  value: string;
+  submittedItemId?: number;
+  submitState: 'idle' | 'submitting' | 'submitted' | 'failed';
 }
 
 const siteTypeOptions: IDropdownOption[] = [
@@ -51,13 +38,14 @@ const siteTypeOptions: IDropdownOption[] = [
 ];
 
 const initialFormState: ISiteRequestFormState = {
+  errorMessage: '',
   siteName: '',
   siteAlias: '',
   siteType: 'TeamSite',
   businessJustification: '',
   primaryOwner: '',
   secondaryOwner: '',
-  submittedLocally: false
+  submitState: 'idle'
 };
 
 const siteAliasPattern: RegExp = /^[a-z0-9-]+$/;
@@ -68,20 +56,28 @@ const getSelectedPersonValue = (items: IPersonaProps[]): string => {
   return selectedPerson ? selectedPerson.secondaryText || selectedPerson.text || '' : '';
 };
 
+const getOwnerFromPersona = (persona: IPersonaProps): ISiteRequestOwner => {
+  const user = PeopleSearchService.getUserFromPersona(persona);
+
+  return {
+    displayName: user.displayName,
+    email: user.email,
+    loginName: user.loginName
+  };
+};
+
 const pickerSuggestionsProps: IBasePickerSuggestionsProps = {
   noResultsFoundText: 'No users found',
   loadingText: 'Searching users...',
   suggestionsHeaderText: 'Suggested users'
 };
 
-const mapPeoplePickerEntityToPersona = (entity: IClientPeoplePickerEntity): IPersonaProps => ({
-  id: entity.Key,
-  secondaryText: entity.EntityData?.Email || entity.Description,
-  tertiaryText: entity.EntityData?.Department,
-  text: entity.DisplayText || entity.EntityData?.Email || entity.Key
-});
-
-const SiteRequest: React.FC<ISiteRequestProps> = ({ spHttpClient, userDisplayName, webAbsoluteUrl }) => {
+const SiteRequest: React.FC<ISiteRequestProps> = ({
+  peopleSearchService,
+  requestedByLoginName,
+  siteRequestService,
+  userDisplayName
+}) => {
   const [formState, setFormState] = React.useState<ISiteRequestFormState>(initialFormState);
   const [primaryOwnerPersonas, setPrimaryOwnerPersonas] = React.useState<IPersonaProps[]>([]);
   const [secondaryOwnerPersonas, setSecondaryOwnerPersonas] = React.useState<IPersonaProps[]>([]);
@@ -90,7 +86,9 @@ const SiteRequest: React.FC<ISiteRequestProps> = ({ spHttpClient, userDisplayNam
     setFormState(previousState => ({
       ...previousState,
       [fieldName]: value,
-      submittedLocally: false
+      errorMessage: '',
+      submitState: 'idle',
+      submittedItemId: undefined
     }));
   };
 
@@ -98,13 +96,6 @@ const SiteRequest: React.FC<ISiteRequestProps> = ({ spHttpClient, userDisplayNam
     setPrimaryOwnerPersonas([]);
     setSecondaryOwnerPersonas([]);
     setFormState(initialFormState);
-  };
-
-  const submitLocalPreview = (): void => {
-    setFormState(previousState => ({
-      ...previousState,
-      submittedLocally: true
-    }));
   };
 
   const siteAliasError: string | undefined =
@@ -128,49 +119,13 @@ const SiteRequest: React.FC<ISiteRequestProps> = ({ spHttpClient, userDisplayNam
     !siteAliasError &&
     !ownerError;
 
+  const isSubmitting: boolean = formState.submitState === 'submitting';
+
   const resolveUserSuggestions = async (
     filterText: string,
     selectedItems?: IPersonaProps[]
   ): Promise<IPersonaProps[]> => {
-    const query: string = filterText.trim();
-
-    if (query.length < 2) {
-      return [];
-    }
-
-    const response: SPHttpClientResponse = await spHttpClient.post(
-      `${webAbsoluteUrl}/_api/SP.UI.ApplicationPages.ClientPeoplePickerWebServiceInterface.clientPeoplePickerSearchUser`,
-      SPHttpClient.configurations.v1,
-      {
-        body: JSON.stringify({
-          queryParams: {
-            AllowEmailAddresses: true,
-            AllowMultipleEntities: false,
-            AllUrlZones: false,
-            MaximumEntitySuggestions: 5,
-            PrincipalSource: 15,
-            PrincipalType: 1,
-            QueryString: query
-          }
-        }),
-        headers: {
-          Accept: 'application/json;odata=nometadata',
-          'Content-Type': 'application/json;odata=nometadata'
-        }
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`People search failed with HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const searchResponse: IClientPeoplePickerResponse = await response.json();
-    const entities: IClientPeoplePickerEntity[] = JSON.parse(searchResponse.value) as IClientPeoplePickerEntity[];
-    const selectedIds: Set<string | undefined> = new Set((selectedItems || []).map(item => item.id));
-
-    return entities
-      .map(mapPeoplePickerEntityToPersona)
-      .filter(persona => !selectedIds.has(persona.id));
+    return peopleSearchService.searchUsers(filterText, selectedItems);
   };
 
   const updatePrimaryOwner = (items?: IPersonaProps[]): void => {
@@ -187,6 +142,47 @@ const SiteRequest: React.FC<ISiteRequestProps> = ({ spHttpClient, userDisplayNam
     updateField('secondaryOwner', getSelectedPersonValue(selectedItems));
   };
 
+  const submitRequest = async (): Promise<void> => {
+    const primaryOwner: IPersonaProps | undefined = primaryOwnerPersonas[0];
+    const secondaryOwner: IPersonaProps | undefined = secondaryOwnerPersonas[0];
+
+    if (!isFormValid || !primaryOwner || !secondaryOwner) {
+      return;
+    }
+
+    setFormState(previousState => ({
+      ...previousState,
+      errorMessage: '',
+      submitState: 'submitting',
+      submittedItemId: undefined
+    }));
+
+    try {
+      const result: ISiteRequestSubmissionResult = await siteRequestService.submitRequest({
+        businessJustification: formState.businessJustification.trim(),
+        primaryOwner: getOwnerFromPersona(primaryOwner),
+        requestedByLoginName,
+        secondaryOwner: getOwnerFromPersona(secondaryOwner),
+        siteAlias: formState.siteAlias.trim(),
+        siteName: formState.siteName.trim(),
+        siteType: formState.siteType
+      });
+
+      setFormState(previousState => ({
+        ...previousState,
+        submitState: 'submitted',
+        submittedItemId: result.itemId
+      }));
+    } catch (error) {
+      setFormState(previousState => ({
+        ...previousState,
+        errorMessage: error instanceof Error ? error.message : 'The site request could not be submitted.',
+        submitState: 'failed',
+        submittedItemId: undefined
+      }));
+    }
+  };
+
   return (
     <section className={styles.siteRequest}>
       <Stack tokens={{ childrenGap: 24 }}>
@@ -200,8 +196,14 @@ const SiteRequest: React.FC<ISiteRequestProps> = ({ spHttpClient, userDisplayNam
         </Stack>
 
         <MessageBar messageBarType={MessageBarType.info}>
-          V1 preview mode: the form validates request metadata locally. SharePoint list submission will be added in the next step.
+          V1 submission mode: valid requests are created in the {siteRequestListTitle} SharePoint list.
         </MessageBar>
+
+        {formState.errorMessage && (
+          <MessageBar messageBarType={MessageBarType.error}>
+            {formState.errorMessage}
+          </MessageBar>
+        )}
 
         <div className={styles.formCard}>
           <Stack tokens={{ childrenGap: 20 }}>
@@ -270,8 +272,12 @@ const SiteRequest: React.FC<ISiteRequestProps> = ({ spHttpClient, userDisplayNam
             </Stack>
 
             <Stack horizontal tokens={{ childrenGap: 12 }}>
-              <PrimaryButton text="Preview request" disabled={!isFormValid} onClick={submitLocalPreview} />
-              <DefaultButton text="Reset" onClick={resetForm} />
+              <PrimaryButton
+                text={isSubmitting ? 'Submitting...' : 'Submit request'}
+                disabled={!isFormValid || isSubmitting}
+                onClick={submitRequest}
+              />
+              <DefaultButton text="Reset" disabled={isSubmitting} onClick={resetForm} />
             </Stack>
           </Stack>
         </div>
@@ -290,11 +296,11 @@ const SiteRequest: React.FC<ISiteRequestProps> = ({ spHttpClient, userDisplayNam
             <dt>Secondary owner</dt>
             <dd>{formState.secondaryOwner || '-'}</dd>
             <dt>Initial status</dt>
-            <dd>Draft</dd>
+            <dd>Submitted</dd>
           </dl>
-          {formState.submittedLocally && (
+          {formState.submitState === 'submitted' && (
             <MessageBar messageBarType={MessageBarType.success}>
-              The request payload is valid and ready for the SharePoint list integration.
+              Site request submitted successfully. Request item ID: {formState.submittedItemId}.
             </MessageBar>
           )}
         </div>
