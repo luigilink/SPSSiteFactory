@@ -53,3 +53,8 @@ functions/obj
 functions/.python_packages
 test-results
 testResults.xml
+
+# Generated certificates from the Entra ID app registration helper
+scripts/certs
+*.pfx
+*.cer

@@ -99,6 +99,7 @@ pwsh ./scripts/New-SiteFactoryRequestsList.ps1 `
 - [Prerequisites and governance](docs/prerequisites.md)
 - [Provisioning flow](docs/provisioning-flow.md)
 - [Provisioning Function app](functions/README.md)
+- [Azure setup](docs/azure-setup.md)
 
 ## Status
 
