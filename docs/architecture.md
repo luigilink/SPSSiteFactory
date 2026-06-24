@@ -33,6 +33,7 @@ SPSSiteFactory is organized around three independent layers: user experience, re
 | Component | Responsibility |
 | --- | --- |
 | SPFx request form web part | Capture and validate user input before submission. |
+| UX and design layer | Provide layout, visual hierarchy, guidance, and future branding hooks. |
 | SharePoint request list | Store request metadata, ownership, status, logs, and final site URL. |
 | Provisioning orchestrator | Execute the provisioning process and update request status. |
 | Provisioning templates | Define reusable site configuration patterns. |
@@ -43,6 +44,7 @@ SPSSiteFactory is organized around three independent layers: user experience, re
 The V1 architecture should stay intentionally simple:
 
 - The SPFx React web part writes requests to the `SiteFactoryRequests` list.
+- The request form should include a polished V1 visual layer while staying aligned with SharePoint theme tokens.
 - The provisioning workflow reads list items and updates status fields.
 - Provisioning errors are stored on the request item for traceability.
 - Site creation supports a limited number of well-known site types.
@@ -56,4 +58,5 @@ Later versions may introduce:
 - PnP provisioning templates;
 - richer admin dashboard;
 - lifecycle review jobs;
+- configurable enterprise branding;
 - GitHub Actions build and release pipeline.

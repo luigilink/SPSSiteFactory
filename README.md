@@ -63,6 +63,7 @@ npm run start
 - [Roadmap](ROADMAP.md)
 - [Architecture](docs/architecture.md)
 - [Data model](docs/data-model.md)
+- [Design guidelines](docs/design-guidelines.md)
 - [Provisioning flow](docs/provisioning-flow.md)
 
 ## Status
