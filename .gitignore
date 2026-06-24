@@ -44,4 +44,4 @@ obj
 !.env.example
 
 # SPFx Azure Storage deploy key (contains accessKey)
-config/deploy-azure-storage.json
+spfx/config/deploy-azure-storage.json

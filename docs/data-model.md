@@ -61,7 +61,7 @@ The provisioning script creates an `All Requests` view when it does not already 
 The initial list can be created with the PnP PowerShell helper script:
 
 ```powershell
-pwsh ./scripts/sharepoint/New-SiteFactoryRequestsList.ps1 -SiteUrl https://contoso.sharepoint.com/sites/sitefactory
+pwsh ./scripts/New-SiteFactoryRequestsList.ps1 -SiteUrl https://contoso.sharepoint.com/sites/sitefactory
 ```
 
 The script requires PowerShell 7.2 or later and PnP.PowerShell. It is idempotent and creates the fields expected by the SPFx submission service.
@@ -69,7 +69,7 @@ The script requires PowerShell 7.2 or later and PnP.PowerShell. It is idempotent
 To apply the V1 direct-submit permission model:
 
 ```powershell
-pwsh ./scripts/sharepoint/New-SiteFactoryRequestsList.ps1 `
+pwsh ./scripts/New-SiteFactoryRequestsList.ps1 `
   -SiteUrl https://contoso.sharepoint.com/sites/sitefactory `
   -ConfigurePermissions `
   -RequestersGroup "Site Factory Requesters" `

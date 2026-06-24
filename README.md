@@ -42,11 +42,25 @@ SharePoint Online site
 
 The business feature is still a site request form. For V1, this form is implemented as an SPFx React web part rather than a SharePoint list form customizer.
 
+## Repository structure
+
+```text
+SPSSiteFactory/
+├── spfx/        # SPFx solution (SiteRequest web part)
+├── scripts/     # PnP PowerShell provisioning scripts
+├── docs/        # Architecture, data model, governance, provisioning flow
+└── ...          # functions/, infra/, templates/ planned (see ROADMAP.md)
+```
+
+Each top-level folder has a single, precise purpose so the SPFx UI, the PowerShell
+provisioning, and the future Azure Function backend stay cleanly separated.
+
 ## Getting started
 
-Use Node 22 before installing or running the project:
+The SPFx solution lives in `spfx/`. Use Node 22 before installing or running it:
 
 ```bash
+cd spfx
 nvm use
 npm install
 npm run build
@@ -55,19 +69,20 @@ npm run build
 Start the local SPFx workbench:
 
 ```bash
+cd spfx
 npm run start
 ```
 
 Create the initial SharePoint request list with PnP PowerShell:
 
 ```powershell
-pwsh ./scripts/sharepoint/New-SiteFactoryRequestsList.ps1 -SiteUrl https://contoso.sharepoint.com/sites/spssitefactory
+pwsh ./scripts/New-SiteFactoryRequestsList.ps1 -SiteUrl https://contoso.sharepoint.com/sites/spssitefactory
 ```
 
 Create the list and apply the V1 direct-submit permission model:
 
 ```powershell
-pwsh ./scripts/sharepoint/New-SiteFactoryRequestsList.ps1 `
+pwsh ./scripts/New-SiteFactoryRequestsList.ps1 `
   -SiteUrl https://contoso.sharepoint.com/sites/spssitefactory `
   -ConfigurePermissions `
   -RequestersGroup "Site Factory Requesters" `

@@ -69,13 +69,13 @@ This stricter model is better for enterprise governance but requires more setup 
 Create the list only:
 
 ```powershell
-pwsh ./scripts/sharepoint/New-SiteFactoryRequestsList.ps1 -SiteUrl https://contoso.sharepoint.com/sites/sitefactory
+pwsh ./scripts/New-SiteFactoryRequestsList.ps1 -SiteUrl https://contoso.sharepoint.com/sites/sitefactory
 ```
 
 Create the list and apply the V1 permission model:
 
 ```powershell
-pwsh ./scripts/sharepoint/New-SiteFactoryRequestsList.ps1 `
+pwsh ./scripts/New-SiteFactoryRequestsList.ps1 `
   -SiteUrl https://contoso.sharepoint.com/sites/sitefactory `
   -ConfigurePermissions `
   -RequestersGroup "Site Factory Requesters" `
