@@ -2,7 +2,8 @@ import * as React from 'react';
 import * as ReactDom from 'react-dom';
 import { Version } from '@microsoft/sp-core-library';
 import {
-  type IPropertyPaneConfiguration
+  type IPropertyPaneConfiguration,
+  PropertyPaneTextField
 } from '@microsoft/sp-property-pane';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 import { IReadonlyTheme } from '@microsoft/sp-component-base';
@@ -11,9 +12,12 @@ import * as strings from 'SiteRequestWebPartStrings';
 import SiteRequest from './components/SiteRequest';
 import { ISiteRequestProps } from './components/ISiteRequestProps';
 import { PeopleSearchService } from './services/PeopleSearchService';
+import { ProvisioningService } from './services/ProvisioningService';
 import { SiteRequestService } from './services/SiteRequestService';
 
 export interface ISiteRequestWebPartProps {
+  provisioningFunctionUrl: string;
+  provisioningFunctionResourceUri: string;
 }
 
 export default class SiteRequestWebPart extends BaseClientSideWebPart<ISiteRequestWebPartProps> {
@@ -21,6 +25,7 @@ export default class SiteRequestWebPart extends BaseClientSideWebPart<ISiteReque
   private _isDarkTheme: boolean = false;
   private _environmentMessage: string = '';
   private _peopleSearchService!: PeopleSearchService;
+  private _provisioningService!: ProvisioningService;
   private _siteRequestService!: SiteRequestService;
 
   public render(): void {
@@ -28,6 +33,7 @@ export default class SiteRequestWebPart extends BaseClientSideWebPart<ISiteReque
       SiteRequest,
       {
         peopleSearchService: this._peopleSearchService,
+        provisioningService: this._provisioningService,
         requestedByLoginName: this.context.pageContext.user.loginName,
         siteRequestService: this._siteRequestService,
         userDisplayName: this.context.pageContext.user.displayName,
@@ -46,6 +52,13 @@ export default class SiteRequestWebPart extends BaseClientSideWebPart<ISiteReque
     this._siteRequestService = new SiteRequestService(
       this.context.spHttpClient,
       this.context.pageContext.web.absoluteUrl
+    );
+    this._provisioningService = new ProvisioningService(
+      this.context.aadHttpClientFactory,
+      {
+        functionResourceUri: this.properties.provisioningFunctionResourceUri,
+        functionUrl: this.properties.provisioningFunctionUrl
+      }
     );
 
     return this._getEnvironmentMessage().then(message => {
@@ -118,7 +131,14 @@ export default class SiteRequestWebPart extends BaseClientSideWebPart<ISiteReque
           groups: [
             {
               groupName: strings.BasicGroupName,
-              groupFields: []
+              groupFields: [
+                PropertyPaneTextField('provisioningFunctionUrl', {
+                  label: strings.ProvisioningFunctionUrlLabel
+                }),
+                PropertyPaneTextField('provisioningFunctionResourceUri', {
+                  label: strings.ProvisioningFunctionResourceUriLabel
+                })
+              ]
             }
           ]
         }

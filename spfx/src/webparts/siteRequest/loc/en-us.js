@@ -3,6 +3,8 @@ define([], function() {
     "PropertyPaneDescription": "Site request form settings",
     "BasicGroupName": "Configuration",
     "DescriptionFieldLabel": "Description",
+    "ProvisioningFunctionUrlLabel": "Provisioning function URL",
+    "ProvisioningFunctionResourceUriLabel": "Provisioning function resource URI (api://<client-id>)",
     "AppLocalEnvironmentSharePoint": "The app is running on your local environment as SharePoint web part",
     "AppLocalEnvironmentTeams": "The app is running on your local environment as Microsoft Teams app",
     "AppLocalEnvironmentOffice": "The app is running on your local environment in office.com",

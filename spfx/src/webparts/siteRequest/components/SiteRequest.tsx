@@ -29,6 +29,7 @@ interface ISiteRequestFormState {
   primaryOwner: string;
   secondaryOwner: string;
   submittedItemId?: number;
+  provisioningNotice?: string;
   submitState: 'idle' | 'submitting' | 'submitted' | 'failed';
 }
 
@@ -130,6 +131,7 @@ const sanitizeAliasInput = (value: string): string =>
 
 const SiteRequest: React.FC<ISiteRequestProps> = ({
   peopleSearchService,
+  provisioningService,
   requestedByLoginName,
   siteRequestService,
   userDisplayName,
@@ -145,7 +147,8 @@ const SiteRequest: React.FC<ISiteRequestProps> = ({
       [fieldName]: value,
       errorMessage: '',
       submitState: 'idle',
-      submittedItemId: undefined
+      submittedItemId: undefined,
+      provisioningNotice: undefined
     }));
   };
 
@@ -156,7 +159,8 @@ const SiteRequest: React.FC<ISiteRequestProps> = ({
       siteAlias: previousState.aliasManuallyEdited ? previousState.siteAlias : slugifySiteAlias(value),
       errorMessage: '',
       submitState: 'idle',
-      submittedItemId: undefined
+      submittedItemId: undefined,
+      provisioningNotice: undefined
     }));
   };
 
@@ -167,7 +171,8 @@ const SiteRequest: React.FC<ISiteRequestProps> = ({
       aliasManuallyEdited: true,
       errorMessage: '',
       submitState: 'idle',
-      submittedItemId: undefined
+      submittedItemId: undefined,
+      provisioningNotice: undefined
     }));
   };
 
@@ -236,7 +241,8 @@ const SiteRequest: React.FC<ISiteRequestProps> = ({
       ...previousState,
       errorMessage: '',
       submitState: 'submitting',
-      submittedItemId: undefined
+      submittedItemId: undefined,
+      provisioningNotice: undefined
     }));
 
     try {
@@ -255,6 +261,16 @@ const SiteRequest: React.FC<ISiteRequestProps> = ({
         submitState: 'submitted',
         submittedItemId: result.itemId
       }));
+
+      // Best-effort: notify the provisioning Function. The request item already exists,
+      // so a trigger failure must not turn a successful submission into an error.
+      const trigger = await provisioningService.triggerProvisioning(webAbsoluteUrl, result.itemId);
+      if (trigger.status === 'failed') {
+        setFormState(previousState => ({
+          ...previousState,
+          provisioningNotice: 'The request was saved, but automatic provisioning could not be started. An administrator will process it.'
+        }));
+      }
     } catch (error) {
       setFormState(previousState => ({
         ...previousState,
@@ -459,6 +475,11 @@ const SiteRequest: React.FC<ISiteRequestProps> = ({
             {formState.submitState === 'submitted' && (
               <MessageBar messageBarType={MessageBarType.success}>
                 Site request submitted successfully. Request item ID: {formState.submittedItemId}.
+              </MessageBar>
+            )}
+            {formState.submitState === 'submitted' && formState.provisioningNotice && (
+              <MessageBar messageBarType={MessageBarType.warning}>
+                {formState.provisioningNotice}
               </MessageBar>
             )}
           </div>

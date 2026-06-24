@@ -8,12 +8,35 @@ This document describes the target provisioning flow for SPSSiteFactory.
 1. User opens the SPFx `SiteRequest` web part, which hosts the request form.
 2. User enters site metadata, owners, and justification.
 3. SPFx validates required fields and URL alias.
-4. SPFx creates an item in SiteFactoryRequests.
-5. Workflow picks up the submitted request.
-6. Workflow records its run identifier and sets status to Provisioning.
-7. Workflow creates the SharePoint Online site.
-8. Workflow updates SiteUrl, ProvisioningLog, provisioning dates, and Status.
+4. SPFx creates an item in SiteFactoryRequests (Status = Submitted).
+5. SPFx calls the SubmitSiteRequest function (AadHttpClient) as a best-effort trigger.
+6. SubmitSiteRequest enqueues the request and returns 202 Accepted.
+7. ProvisionSite (queue worker) records its run id and sets status to Provisioning.
+8. ProvisionSite creates the SharePoint Online site.
+9. ProvisionSite updates SiteUrl, ProvisioningLog, provisioning dates, and Status.
 ```
+
+## SPFx trigger and resilience
+
+The SPFx submission is a two-step, decoupled flow:
+
+1. The web part writes the request item to SharePoint with the user's context.
+2. It then calls the `SubmitSiteRequest` function through `AadHttpClient`.
+
+The function call is **best-effort**: the request item already exists, so a transient
+function failure never turns a successful submission into an error. When the trigger
+fails, the form shows an informational message and the request can still be picked up
+later (by a retry, a polling job, or an administrator).
+
+The function endpoint is configured on the web part property pane:
+
+| Property | Example |
+| --- | --- |
+| Provisioning function URL | `https://spssitefactory-func.azurewebsites.net/api/SubmitSiteRequest` |
+| Provisioning function resource URI | `api://<entra-app-client-id>` |
+
+The package also declares a `webApiPermissionRequests` entry so a tenant administrator
+can approve the SPFx-to-function call in the SharePoint admin center (API access page).
 
 ## Status transitions
 

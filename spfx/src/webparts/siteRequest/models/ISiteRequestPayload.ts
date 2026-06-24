@@ -17,3 +17,9 @@ export interface ISiteRequestPayload {
 export interface ISiteRequestSubmissionResult {
   itemId: number;
 }
+
+export interface IProvisioningTriggerResult {
+  triggered: boolean;
+  status: 'queued' | 'skipped' | 'failed';
+  message?: string;
+}
