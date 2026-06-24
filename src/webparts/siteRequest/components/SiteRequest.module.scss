@@ -1,34 +1,49 @@
 @import 'pkg:@fluentui/react/dist/sass/References.scss';
 
 .siteRequest {
-  overflow: hidden;
-  padding: 1em;
   color: "[theme:bodyText, default: #323130]";
   color: var(--bodyText);
-  &.teams {
-    font-family: $ms-font-family-fallbacks;
+  margin: 0 auto;
+  max-width: 960px;
+  padding: 24px;
+}
+
+.header {
+  border-left: 4px solid "[theme:themePrimary, default: #0078d4]";
+  padding-left: 16px;
+}
+
+.requester {
+  color: "[theme:neutralSecondary, default: #605e5c]";
+}
+
+.errorText {
+  color: "[theme:errorText, default: #a4262c]";
+  display: block;
+  margin-top: 6px;
+}
+
+.formCard,
+.summaryCard {
+  background: "[theme:bodyBackground, default: #ffffff]";
+  border: 1px solid "[theme:neutralLight, default: #edebe9]";
+  border-radius: 4px;
+  box-shadow: 0 1.6px 3.6px 0 rgba(0, 0, 0, 0.13), 0 0.3px 0.9px 0 rgba(0, 0, 0, 0.11);
+  padding: 24px;
+}
+
+.summaryList {
+  display: grid;
+  gap: 8px 24px;
+  grid-template-columns: minmax(140px, 220px) 1fr;
+  margin: 16px 0;
+
+  dt {
+    color: "[theme:neutralSecondary, default: #605e5c]";
+    font-weight: 600;
   }
-}
 
-.welcome {
-  text-align: center;
-}
-
-.welcomeImage {
-  width: 100%;
-  max-width: 420px;
-}
-
-.links {
-  a {
-    text-decoration: none;
-    color: "[theme:link, default:#03787c]";
-    color: var(--link); // note: CSS Custom Properties support is limited to modern browsers only
-
-    &:hover {
-      text-decoration: underline;
-      color: "[theme:linkHovered, default: #014446]";
-      color: var(--linkHovered); // note: CSS Custom Properties support is limited to modern browsers only
-    }
+  dd {
+    margin: 0;
   }
 }

@@ -1,7 +1,7 @@
+import type { SPHttpClient } from '@microsoft/sp-http';
+
 export interface ISiteRequestProps {
-  description: string;
-  isDarkTheme: boolean;
-  environmentMessage: string;
-  hasTeamsContext: boolean;
+  spHttpClient: SPHttpClient;
   userDisplayName: string;
+  webAbsoluteUrl: string;
 }

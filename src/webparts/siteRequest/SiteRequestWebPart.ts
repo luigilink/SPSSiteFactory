@@ -2,8 +2,7 @@ import * as React from 'react';
 import * as ReactDom from 'react-dom';
 import { Version } from '@microsoft/sp-core-library';
 import {
-  type IPropertyPaneConfiguration,
-  PropertyPaneTextField
+  type IPropertyPaneConfiguration
 } from '@microsoft/sp-property-pane';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 import { IReadonlyTheme } from '@microsoft/sp-component-base';
@@ -13,7 +12,6 @@ import SiteRequest from './components/SiteRequest';
 import { ISiteRequestProps } from './components/ISiteRequestProps';
 
 export interface ISiteRequestWebPartProps {
-  description: string;
 }
 
 export default class SiteRequestWebPart extends BaseClientSideWebPart<ISiteRequestWebPartProps> {
@@ -24,12 +22,10 @@ export default class SiteRequestWebPart extends BaseClientSideWebPart<ISiteReque
   public render(): void {
     const element: React.ReactElement<ISiteRequestProps> = React.createElement(
       SiteRequest,
-      {
-        description: this.properties.description,
-        isDarkTheme: this._isDarkTheme,
-        environmentMessage: this._environmentMessage,
-        hasTeamsContext: !!this.context.sdks.microsoftTeams,
-        userDisplayName: this.context.pageContext.user.displayName
+        {
+        spHttpClient: this.context.spHttpClient,
+        userDisplayName: this.context.pageContext.user.displayName,
+        webAbsoluteUrl: this.context.pageContext.web.absoluteUrl
       }
     );
 
@@ -107,11 +103,7 @@ export default class SiteRequestWebPart extends BaseClientSideWebPart<ISiteReque
           groups: [
             {
               groupName: strings.BasicGroupName,
-              groupFields: [
-                PropertyPaneTextField('description', {
-                  label: strings.DescriptionFieldLabel
-                })
-              ]
+              groupFields: []
             }
           ]
         }
