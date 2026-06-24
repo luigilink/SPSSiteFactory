@@ -28,6 +28,7 @@ Goal: allow users to submit site creation requests and provision basic SharePoin
 - Site owner and secondary owner fields.
 - Business justification field.
 - Initial UX and visual design pass with clearer layout, spacing, colors, and guidance messages.
+- Provisioning backend: Azure Function (PowerShell + PnP) with HTTP intake and a queue worker.
 - Provisioning workflow triggered from a submitted or approved request.
 - Provisioning result written back to the request item.
 - Basic provisioning log and final site URL stored in the list.

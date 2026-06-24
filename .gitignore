@@ -45,3 +45,11 @@ obj
 
 # SPFx Azure Storage deploy key (contains accessKey)
 spfx/config/deploy-azure-storage.json
+
+# Azure Functions local secrets and build output
+functions/local.settings.json
+functions/bin
+functions/obj
+functions/.python_packages
+test-results
+testResults.xml

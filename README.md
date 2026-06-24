@@ -47,13 +47,14 @@ The business feature is still a site request form. For V1, this form is implemen
 ```text
 SPSSiteFactory/
 ├── spfx/        # SPFx solution (SiteRequest web part)
+├── functions/   # Azure Function (PowerShell + PnP) provisioning backend
 ├── scripts/     # PnP PowerShell provisioning scripts
 ├── docs/        # Architecture, data model, governance, provisioning flow
-└── ...          # functions/, infra/, templates/ planned (see ROADMAP.md)
+└── ...          # infra/, templates/ planned (see ROADMAP.md)
 ```
 
 Each top-level folder has a single, precise purpose so the SPFx UI, the PowerShell
-provisioning, and the future Azure Function backend stay cleanly separated.
+provisioning, and the Azure Function backend stay cleanly separated.
 
 ## Getting started
 
@@ -97,6 +98,7 @@ pwsh ./scripts/New-SiteFactoryRequestsList.ps1 `
 - [Design guidelines](docs/design-guidelines.md)
 - [Prerequisites and governance](docs/prerequisites.md)
 - [Provisioning flow](docs/provisioning-flow.md)
+- [Provisioning Function app](functions/README.md)
 
 ## Status
 

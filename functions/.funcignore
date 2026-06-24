@@ -1,0 +1,6 @@
+.git*
+.vscode
+local.settings.json
+tests
+*.Tests.ps1
+test-results

@@ -1,0 +1,13 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "powershell",
+    "FUNCTIONS_WORKER_RUNTIME_VERSION": "7.4",
+    "TenantId": "00000000-0000-0000-0000-000000000000",
+    "ClientId": "00000000-0000-0000-0000-000000000000",
+    "CertificateThumbprint": "",
+    "AdminSiteUrl": "https://contoso-admin.sharepoint.com",
+    "TenantUrl": "https://contoso.sharepoint.com"
+  }
+}
