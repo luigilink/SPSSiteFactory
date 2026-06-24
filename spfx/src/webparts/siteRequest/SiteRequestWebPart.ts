@@ -31,6 +31,7 @@ export default class SiteRequestWebPart extends BaseClientSideWebPart<ISiteReque
         requestedByLoginName: this.context.pageContext.user.loginName,
         siteRequestService: this._siteRequestService,
         userDisplayName: this.context.pageContext.user.displayName,
+        webAbsoluteUrl: this.context.pageContext.web.absoluteUrl,
       }
     );
 

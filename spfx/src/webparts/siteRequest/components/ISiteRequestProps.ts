@@ -6,4 +6,5 @@ export interface ISiteRequestProps {
   requestedByLoginName: string;
   siteRequestService: SiteRequestService;
   userDisplayName: string;
+  webAbsoluteUrl: string;
 }
