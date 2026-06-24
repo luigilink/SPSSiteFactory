@@ -12,6 +12,7 @@
   - Best-effort call to the provisioning Azure Function via `ProvisioningService` (`AadHttpClient`), with a non-blocking notice if the trigger fails (the request is already saved)
   - Web part properties for the Function URL and Entra resource URI, plus a `webApiPermissionRequests` declaration for admin approval
   - Typed models and constants (`ISiteRequestPayload`, `IPeoplePickerUser`, `siteRequestConstants`)
+  - Solution and web part branding: custom tile icon (`sharepoint/assets/tile-icon.png`) and Teams app icons, plus the `Website` Fluent UI icon (replacing the generated sample assets)
 - SharePoint and provisioning automation (`scripts/`, `functions/`)
   - `New-SiteFactoryRequestsList.ps1` provisions and governs the `SiteFactoryRequests` list (typed fields, choices, item-level security, group permissions) with structured logging, top-level try/catch, `-ClientId` interactive auth, approved-verb functions, and `-WhatIf`/`-Confirm` support
   - `Register-SPSSiteFactoryApp.ps1` registers the Entra ID application

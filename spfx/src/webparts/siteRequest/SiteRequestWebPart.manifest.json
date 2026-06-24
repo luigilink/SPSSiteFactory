@@ -20,7 +20,7 @@
     "group": { "default": "Advanced" },
     "title": { "default": "Site Request" },
     "description": { "default": "Request a governed SharePoint Online site" },
-    "officeFabricIconFontName": "Page",
+    "officeFabricIconFontName": "Website",
     "properties": {
     }
   }]
