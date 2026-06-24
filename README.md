@@ -49,58 +49,37 @@ SPSSiteFactory/
 ├── spfx/        # SPFx solution (SiteRequest web part)
 ├── functions/   # Azure Function (PowerShell + PnP) provisioning backend
 ├── scripts/     # PnP PowerShell provisioning scripts
-├── docs/        # Architecture, data model, governance, provisioning flow
-└── ...          # infra/, templates/ planned (see ROADMAP.md)
+├── infra/       # Bicep infrastructure
+├── docs/        # Documentation (published to the wiki)
+└── .github/     # CI workflows and community files
 ```
-
-Each top-level folder has a single, precise purpose so the SPFx UI, the PowerShell
-provisioning, and the Azure Function backend stay cleanly separated.
 
 ## Getting started
 
-The SPFx solution lives in `spfx/`. Use Node 22 before installing or running it:
-
-```bash
-cd spfx
-nvm use
-npm install
-npm run build
-```
-
-Start the local SPFx workbench:
-
-```bash
-cd spfx
-npm run start
-```
-
-Create the initial SharePoint request list with PnP PowerShell:
-
-```powershell
-pwsh ./scripts/New-SiteFactoryRequestsList.ps1 -SiteUrl https://contoso.sharepoint.com/sites/spssitefactory
-```
-
-Create the list and apply the V1 direct-submit permission model:
-
-```powershell
-pwsh ./scripts/New-SiteFactoryRequestsList.ps1 `
-  -SiteUrl https://contoso.sharepoint.com/sites/spssitefactory `
-  -ConfigurePermissions `
-  -RequestersGroup "Site Factory Requesters" `
-  -AdministratorsGroup "Site Factory Administrators"
-```
+The SPFx solution lives in `spfx/` and the provisioning automation in `scripts/`,
+`functions/`, and `infra/`. Build the web part, provision the request list, and deploy
+the backend by following the [Getting Started](https://github.com/luigilink/SPSSiteFactory/wiki/Getting-Started)
+guide on the wiki.
 
 ## Documentation
 
-- [Roadmap](ROADMAP.md)
-- [Architecture](docs/architecture.md)
-- [Data model](docs/data-model.md)
-- [Design guidelines](docs/design-guidelines.md)
-- [Prerequisites and governance](docs/prerequisites.md)
-- [Provisioning flow](docs/provisioning-flow.md)
-- [Provisioning Function app](functions/README.md)
-- [Azure setup](docs/azure-setup.md)
+Full documentation is published to the [SPSSiteFactory wiki](https://github.com/luigilink/SPSSiteFactory/wiki):
 
-## Status
+- [Getting Started](https://github.com/luigilink/SPSSiteFactory/wiki/Getting-Started)
+- [Prerequisites](https://github.com/luigilink/SPSSiteFactory/wiki/Prerequisites)
+- [Architecture](https://github.com/luigilink/SPSSiteFactory/wiki/Architecture)
+- [Data Model](https://github.com/luigilink/SPSSiteFactory/wiki/Data-Model)
+- [Provisioning Flow](https://github.com/luigilink/SPSSiteFactory/wiki/Provisioning-Flow)
+- [Azure Setup](https://github.com/luigilink/SPSSiteFactory/wiki/Azure-Setup)
 
-This project is in early implementation phase. The initial SPFx React web part has been scaffolded and the next goal is to replace the generated sample UI with the first site request form.
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for the V1 to V4 plan.
+
+## Change log
+
+A full list of changes is available in the [change log](CHANGELOG.md).
+
+## Code of conduct
+
+This project adopts the [Contributor Covenant](CODE_OF_CONDUCT.md).

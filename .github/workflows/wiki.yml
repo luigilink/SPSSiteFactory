@@ -1,0 +1,102 @@
+# Publishes the repository documentation to the GitHub Wiki.
+# The wiki is sourced from docs/ (plus the functions README), so there is no separate
+# wiki/ folder to maintain. A Home page and a sidebar are generated automatically.
+
+name: SPSSiteFactory CI Wiki
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'functions/README.md'
+      - '.github/workflows/wiki.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: wiki
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  wiki:
+    name: Publish to GitHub Wiki
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          path: repo
+
+      - name: Checkout wiki
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+
+      - name: Build wiki content from docs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          src="$GITHUB_WORKSPACE/repo"
+          dest="$GITHUB_WORKSPACE/wiki"
+
+          # Start from a clean wiki working copy (keep the .git folder).
+          find "$dest" -mindepth 1 -maxdepth 1 -not -name '.git' -exec rm -rf {} +
+
+          # Map a docs file name to a wiki page name (Title-Case-With-Hyphens).
+          to_page_name() {
+            base="$(basename "$1" .md)"
+            echo "$base" | awk -F'-' '{ for (i=1; i<=NF; i++) { $i=toupper(substr($i,1,1)) substr($i,2) } print }' OFS='-'
+          }
+
+          # Copy each docs/*.md as a wiki page (docs/Home.md becomes the wiki Home).
+          for f in "$src"/docs/*.md; do
+            [ -e "$f" ] || continue
+            page="$(to_page_name "$f")"
+            cp "$f" "$dest/${page}.md"
+          done
+
+          # Publish the functions backend README as its own page.
+          if [ -f "$src/functions/README.md" ]; then
+            cp "$src/functions/README.md" "$dest/Provisioning-Function.md"
+          fi
+
+          # Generate a sidebar that lists the published pages (Home first, no duplicate).
+          {
+            echo "## SPSSiteFactory"
+            echo ""
+            echo "- [Home](Home)"
+            if [ -f "$src/docs/Getting-Started.md" ]; then
+              echo "- [Getting Started](Getting-Started)"
+            fi
+            for f in "$src"/docs/*.md; do
+              [ -e "$f" ] || continue
+              page="$(to_page_name "$f")"
+              { [ "$page" = "Home" ] || [ "$page" = "Getting-Started" ]; } && continue
+              title="${page//-/ }"
+              echo "- [${title}](${page})"
+            done
+            if [ -f "$src/functions/README.md" ]; then
+              echo "- [Provisioning Function](Provisioning-Function)"
+            fi
+          } > "$dest/_Sidebar.md"
+
+      - name: Commit and push wiki
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE/wiki"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add -A
+          if git diff-index --quiet HEAD; then
+            echo "No documentation changes to publish."
+          else
+            git commit -m "action: wiki sync"
+            git push
+          fi

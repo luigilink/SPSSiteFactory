@@ -355,6 +355,7 @@ function Add-SPSSiteFactoryUserField {
 }
 
 function Set-SPSSiteFactoryListGovernance {
+    [CmdletBinding(SupportsShouldProcess)]
     param
     (
         [Parameter(Mandatory = $true)]
@@ -408,6 +409,7 @@ Exception: $($_.Exception.Message)
 }
 
 function Set-SPSSiteFactoryDefaultField {
+    [CmdletBinding(SupportsShouldProcess)]
     param
     (
         [Parameter(Mandatory = $true)]

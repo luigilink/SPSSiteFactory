@@ -1,0 +1,63 @@
+# Builds the SPFx package and publishes a GitHub release when a v* tag is pushed.
+
+name: SPSSiteFactory CI Release
+
+on:
+  push:
+    tags:
+      - 'v*' # e.g. v1.0.0
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'spfx/.nvmrc'
+
+      - name: Install SPFx dependencies
+        working-directory: spfx
+        run: npm ci
+
+      - name: Build SPFx package
+        working-directory: spfx
+        run: npm run build
+
+      - name: Stage release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          staging="release-staging/SPSSiteFactory-${{ github.ref_name }}"
+          mkdir -p "$staging"
+          cp -r scripts "$staging/"
+          cp spfx/sharepoint/solution/sps-site-factory.sppkg "$staging/"
+          mkdir -p release-assets
+          (cd release-staging && zip -r "../release-assets/SPSSiteFactory-${{ github.ref_name }}.zip" "SPSSiteFactory-${{ github.ref_name }}")
+
+      - name: Prepare release notes
+        id: notes
+        shell: bash
+        run: |
+          if [ -f RELEASE-NOTES.md ]; then
+            echo "path=RELEASE-NOTES.md" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          prerelease: false
+          generate_release_notes: ${{ steps.notes.outputs.path == '' }}
+          body_path: ${{ steps.notes.outputs.path }}
+          files: |
+            LICENSE
+            release-assets/SPSSiteFactory-${{ github.ref_name }}.zip

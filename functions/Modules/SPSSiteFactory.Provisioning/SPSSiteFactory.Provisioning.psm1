@@ -309,7 +309,7 @@ function New-SPSSiteFactorySite {
         .PARAMETER TenantUrl
         Tenant base URL (required for communication sites to build the full URL).
     #>
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     [OutputType([System.String])]
     param
     (
@@ -334,6 +334,10 @@ function New-SPSSiteFactorySite {
         [System.String]
         $TenantUrl
     )
+
+    if (-not $PSCmdlet.ShouldProcess($SiteName, "Create $SiteType")) {
+        return
+    }
 
     switch ($SiteType) {
         'TeamSite' {
