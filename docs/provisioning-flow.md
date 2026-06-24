@@ -10,9 +10,9 @@ This document describes the target provisioning flow for SPSSiteFactory.
 3. SPFx validates required fields and URL alias.
 4. SPFx creates an item in SiteFactoryRequests.
 5. Workflow picks up the submitted request.
-6. Workflow sets status to Provisioning.
+6. Workflow records its run identifier and sets status to Provisioning.
 7. Workflow creates the SharePoint Online site.
-8. Workflow updates SiteUrl, ProvisioningLog, and Status.
+8. Workflow updates SiteUrl, ProvisioningLog, provisioning dates, and Status.
 ```
 
 ## Status transitions
@@ -35,11 +35,46 @@ For the first MVP, the `Approved` step may be optional if the project starts wit
 The provisioning layer should:
 
 - validate that the request is still eligible for provisioning;
+- record `ProvisioningRunId`, `LastProvisioningAttempt`, and `ProvisioningStartedDate`;
 - create the requested SharePoint Online site;
 - apply the selected template when available;
 - assign primary and secondary owners;
 - write the final site URL back to the request item;
+- write `ProvisioningCompletedDate` when the request reaches `Completed` or `Failed`;
 - write meaningful error details when provisioning fails.
+
+## V1 tracking fields
+
+| Field | Written by | Purpose |
+| --- | --- | --- |
+| Status | SPFx and provisioning engine | Current request lifecycle state. |
+| ProvisioningRunId | Provisioning engine | Trace the Power Automate run or future API execution. |
+| LastProvisioningAttempt | Provisioning engine | Show the latest processing attempt. |
+| ProvisioningStartedDate | Provisioning engine | Show when the active attempt started. |
+| ProvisioningCompletedDate | Provisioning engine | Show when provisioning finished or failed. |
+| SiteUrl | Provisioning engine | Store the created SharePoint site URL. |
+| ProvisioningLog | Provisioning engine | Store readable success or error details. |
+
+## Power Automate V1 outline
+
+1. Trigger when an item is created or modified.
+2. Continue only when `Status` equals `Submitted` or `Approved`.
+3. Update the item:
+   - `Status = Provisioning`;
+   - `ProvisioningRunId = workflow run id`;
+   - `LastProvisioningAttempt = utcNow()`;
+   - `ProvisioningStartedDate = utcNow()`.
+4. Create the SharePoint Online site.
+5. Apply basic ownership and template settings.
+6. On success, update:
+   - `Status = Completed`;
+   - `SiteUrl = created site URL`;
+   - `ProvisioningCompletedDate = utcNow()`;
+   - `ProvisioningLog = success summary`.
+7. On failure, update:
+   - `Status = Failed`;
+   - `ProvisioningCompletedDate = utcNow()`;
+   - `ProvisioningLog = error summary`.
 
 ## Candidate provisioning engines
 

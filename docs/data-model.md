@@ -20,6 +20,10 @@ The initial data model is centered on a SharePoint list named `SiteFactoryReques
 | Status | Choice | Yes | Request lifecycle status. |
 | SiteUrl | Hyperlink | No | Final site URL after provisioning. |
 | ProvisioningLog | Multiple lines of text | No | Human-readable provisioning result or error details. |
+| ProvisioningRunId | Single line of text | No | Identifier of the workflow or API run that processed the request. |
+| LastProvisioningAttempt | Date and time | No | Last time a provisioning engine attempted to process the request. |
+| ProvisioningStartedDate | Date and time | No | Date when provisioning started. |
+| ProvisioningCompletedDate | Date and time | No | Date when provisioning completed or failed. |
 | RequestedBy | Person or Group | Yes | User who submitted the request. |
 | RequestedDate | Date and time | Yes | Request submission date. |
 | ApprovedBy | Person or Group | No | Approver for governed scenarios. |
@@ -38,11 +42,11 @@ The initial data model is centered on a SharePoint list named `SiteFactoryReques
 
 ## Views
 
-The provisioning script creates an `All Requests` view when it does not already exist and sets this custom view as the default view. It does not modify the original SharePoint `AllItems.aspx` view.
+The provisioning script creates an `All Requests` view when it does not already exist and sets this custom view as the default view. When the view already exists, the script only adds missing expected columns. It does not modify the original SharePoint `AllItems.aspx` view.
 
 | View | Purpose | Columns |
 | --- | --- | --- |
-| All Requests | Default administrator view for request follow-up. | Request Title, SiteName, SiteAlias, SiteType, Status, PrimaryOwner, SecondaryOwner, RequestedBy, RequestedDate, SiteUrl |
+| All Requests | Default administrator view for request follow-up. | Request Title, SiteName, SiteAlias, SiteType, Status, PrimaryOwner, SecondaryOwner, RequestedBy, RequestedDate, LastProvisioningAttempt, SiteUrl |
 
 ## Validation rules
 

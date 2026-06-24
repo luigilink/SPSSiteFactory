@@ -442,7 +442,31 @@ function Add-SPSSiteFactoryListView {
     $view = Get-PnPView -List $List -Identity $Title -ErrorAction SilentlyContinue
 
     if ($null -ne $view) {
-        Write-SPSSiteFactoryLog -Message "View '$Title' already exists - skipping."
+        Write-SPSSiteFactoryLog -Message "View '$Title' already exists - checking fields."
+        $currentViewFields = @($view.ViewFields)
+        $missingFields = @($Fields | Where-Object -FilterScript { $_ -notin $currentViewFields })
+
+        if ($missingFields.Count -eq 0) {
+            Write-SPSSiteFactoryLog -Message "View '$Title' already contains all expected fields - skipping."
+            return
+        }
+
+        Write-SPSSiteFactoryLog -Message "Adding missing fields to view '$Title': $($missingFields -join ', ')"
+
+        try {
+            $updatedFields = @($currentViewFields + $missingFields)
+            Set-PnPView -List $List -Identity $Title -Fields $updatedFields | Out-Null
+            Write-SPSSiteFactoryLog -Message "View '$Title' updated." -Level Success
+        }
+        catch {
+            $catchMessage = @"
+An error occurred while updating view '$Title'.
+List: $List
+MissingFields: $($missingFields -join ', ')
+Exception: $($_.Exception.Message)
+"@
+            Write-Error -Message $catchMessage
+        }
         return
     }
 
@@ -491,6 +515,10 @@ try {
     Add-SPSSiteFactoryField -List $listTitle -InternalName 'Status' -DisplayName 'Status' -Type Choice -Required $true -Choices @('Draft', 'Submitted', 'Approved', 'Provisioning', 'Completed', 'Failed')
     Add-SPSSiteFactoryField -List $listTitle -InternalName 'SiteUrl' -DisplayName 'Site Url' -Type URL
     Add-SPSSiteFactoryField -List $listTitle -InternalName 'ProvisioningLog' -DisplayName 'Provisioning Log' -Type Note
+    Add-SPSSiteFactoryField -List $listTitle -InternalName 'ProvisioningRunId' -DisplayName 'Provisioning Run Id' -Type Text
+    Add-SPSSiteFactoryField -List $listTitle -InternalName 'LastProvisioningAttempt' -DisplayName 'Last Provisioning Attempt' -Type DateTime
+    Add-SPSSiteFactoryField -List $listTitle -InternalName 'ProvisioningStartedDate' -DisplayName 'Provisioning Started Date' -Type DateTime
+    Add-SPSSiteFactoryField -List $listTitle -InternalName 'ProvisioningCompletedDate' -DisplayName 'Provisioning Completed Date' -Type DateTime
     Add-SPSSiteFactoryUserField -List $listTitle -InternalName 'RequestedBy' -DisplayName 'Requested By' -Required $true
     Add-SPSSiteFactoryField -List $listTitle -InternalName 'RequestedDate' -DisplayName 'Requested Date' -Type DateTime -Required $true
     Add-SPSSiteFactoryUserField -List $listTitle -InternalName 'ApprovedBy' -DisplayName 'Approved By'
@@ -507,6 +535,7 @@ try {
         'SecondaryOwner',
         'RequestedBy',
         'RequestedDate',
+        'LastProvisioningAttempt',
         'SiteUrl'
     ) -SetAsDefault $true
 
