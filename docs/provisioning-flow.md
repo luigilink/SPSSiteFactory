@@ -5,7 +5,7 @@ This document describes the target provisioning flow for SPSSiteFactory.
 ## V1 flow
 
 ```text
-1. User opens the SPFx request form.
+1. User opens the SPFx `SiteRequest` web part, which hosts the request form.
 2. User enters site metadata, owners, and justification.
 3. SPFx validates required fields and URL alias.
 4. SPFx creates an item in SiteFactoryRequests.

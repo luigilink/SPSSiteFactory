@@ -16,7 +16,7 @@ Goal: allow users to submit site creation requests and provision basic SharePoin
 
 ### Scope
 
-- SPFx form to submit a site creation request.
+- SPFx React web part hosting the site request form.
 - SharePoint list named `SiteFactoryRequests`.
 - Request status lifecycle: `Draft`, `Submitted`, `Approved`, `Provisioning`, `Completed`, `Failed`.
 - Support for basic site types:
@@ -84,7 +84,7 @@ Goal: evolve SPSSiteFactory into a more complete SharePoint Online site lifecycl
 | Provisioning engine | Power Automate for MVP, Azure Function as a possible evolution | Open |
 | Authentication model | To be defined based on provisioning engine | Open |
 | Template format | JSON-based templates | Proposed |
-| SPFx shape | Form web part or list form customizer | Open |
+| SPFx shape | React web part hosting the request form for V1. List form customizer remains a possible future option. | Decided for V1 |
 | Deployment target | SharePoint Online tenant app catalog | Proposed |
 
 ## Next steps

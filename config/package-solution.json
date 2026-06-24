@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "sps-site-factory-client-side-solution",
+    "id": "0bcd4b2b-1b20-45de-b460-05936f23a98e",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.23.0"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "sps-site-factory description"
+      },
+      "longDescription": {
+        "default": "sps-site-factory description"
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "sps-site-factory Feature",
+        "description": "The feature that activates elements of the sps-site-factory solution.",
+        "id": "d73b232d-83e3-4364-a0b8-f4a44d2d7096",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/sps-site-factory.sppkg"
+  }
+}
