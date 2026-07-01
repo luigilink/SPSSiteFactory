@@ -9,6 +9,13 @@
 //
 // SharePoint settings (tenantId, clientId, certificateThumbprint, adminSiteUrl,
 // tenantUrl) can be passed at deploy time or set later on the Function App.
+//
+// App-only certificate: this template provisions an empty Key Vault and grants the
+// Function's managed identity read access to its secrets. After deployment, generate
+// the self-signed certificate inside the vault and register its public key on the
+// Entra ID application (see docs/azure-setup.md). The Function loads the certificate
+// from Key Vault at runtime (CertificateSecretUri), which is the only app-only path
+// that works on Linux Functions.
 
 targetScope = 'resourceGroup'
 
@@ -37,8 +44,11 @@ param tenantId string = ''
 @description('Entra ID application (client) id used for PnP app-only authentication.')
 param clientId string = ''
 
-@description('Certificate thumbprint used for PnP app-only authentication.')
+@description('Certificate thumbprint used for PnP app-only authentication (local Windows development fallback).')
 param certificateThumbprint string = ''
+
+@description('Name of the Key Vault certificate/secret holding the app-only provisioning certificate.')
+param certificateSecretName string = 'spssitefactory-provisioning'
 
 @description('SharePoint admin center URL, e.g. https://contoso-admin.sharepoint.com.')
 param adminSiteUrl string = ''
@@ -50,10 +60,13 @@ var storageAccountName = toLower('st${uniqueString(resourceGroup().id, appName)}
 var hostingPlanName = '${appName}-plan'
 var appInsightsName = '${appName}-ai'
 var logAnalyticsName = '${appName}-law'
+var keyVaultName = toLower('kv-${uniqueString(resourceGroup().id, appName)}')
 
 // Built-in role definition ids for identity-based storage access.
 var storageBlobDataOwnerRoleId = 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
 var storageQueueDataContributorRoleId = '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
+// Built-in role definition id allowing the identity to read Key Vault secrets.
+var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageAccountName
@@ -89,6 +102,24 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   properties: {
     Application_Type: 'web'
     WorkspaceResourceId: logAnalytics.id
+  }
+}
+
+// Key Vault holding the app-only provisioning certificate. RBAC authorization is used
+// so the Function's managed identity can read the certificate secret at runtime.
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
+  name: keyVaultName
+  location: location
+  properties: {
+    tenantId: subscription().tenantId
+    sku: {
+      family: 'A'
+      name: 'standard'
+    }
+    enableRbacAuthorization: true
+    enableSoftDelete: true
+    softDeleteRetentionInDays: 90
+    publicNetworkAccess: 'Enabled'
   }
 }
 
@@ -154,10 +185,6 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           value: appInsights.properties.ConnectionString
         }
         {
-          name: 'WEBSITE_LOAD_CERTIFICATES'
-          value: '*'
-        }
-        {
           name: 'TenantId'
           value: tenantId
         }
@@ -168,6 +195,12 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'CertificateThumbprint'
           value: certificateThumbprint
+        }
+        {
+          // Data-plane URI of the Key Vault secret holding the app-only certificate.
+          // The Function reads it at runtime through its managed identity.
+          name: 'CertificateSecretUri'
+          value: '${keyVault.properties.vaultUri}secrets/${certificateSecretName}'
         }
         {
           name: 'AdminSiteUrl'
@@ -204,7 +237,20 @@ resource queueContributorAssignment 'Microsoft.Authorization/roleAssignments@202
   }
 }
 
+// Allow the function's managed identity to read the provisioning certificate secret.
+resource keyVaultSecretsUserAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(keyVault.id, functionApp.id, keyVaultSecretsUserRoleId)
+  scope: keyVault
+  properties: {
+    principalId: functionApp.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsUserRoleId)
+  }
+}
+
 output functionAppName string = functionApp.name
 output functionAppPrincipalId string = functionApp.identity.principalId
 output storageAccountName string = storageAccount.name
 output appInsightsName string = appInsights.name
+output keyVaultName string = keyVault.name
+output keyVaultUri string = keyVault.properties.vaultUri
