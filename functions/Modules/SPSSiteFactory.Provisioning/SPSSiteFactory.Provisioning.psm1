@@ -129,7 +129,18 @@ function Connect-SPSSiteFactory {
         Entra ID application (client) id.
 
         .PARAMETER CertificateThumbprint
-        Certificate thumbprint used for app-only authentication.
+        Certificate thumbprint used for app-only authentication against the local
+        Windows certificate store (local development).
+
+        .PARAMETER CertificateBase64Encoded
+        Base64-encoded PKCS#12 certificate used for app-only authentication. In Azure this
+        is resolved from Key Vault through the CertificateBase64 app setting and is the
+        mechanism that works on Linux Functions. The Key Vault certificate secret is
+        delivered password-less, so no certificate password is required.
+
+        .PARAMETER UseManagedIdentity
+        Use the Azure Function's managed identity to authenticate (recommended in Azure).
+        When set, ClientId, TenantId, and CertificateThumbprint are ignored.
 
         .PARAMETER Interactive
         Use interactive authentication instead of app-only (local development only).
@@ -154,17 +165,44 @@ function Connect-SPSSiteFactory {
         $CertificateThumbprint,
 
         [Parameter()]
+        [System.String]
+        $CertificateBase64Encoded,
+
+        [Parameter()]
+        [System.Management.Automation.SwitchParameter]
+        $UseManagedIdentity,
+
+        [Parameter()]
         [System.Management.Automation.SwitchParameter]
         $Interactive
     )
 
     try {
+        if ($UseManagedIdentity) {
+            Connect-PnPOnline -Url $Url -ManagedIdentity
+
+            if ($null -eq (Get-PnPContext)) {
+                throw "Connection to '$Url' did not establish a PnP context."
+            }
+            return
+        }
+
         if ($Interactive) {
             Connect-PnPOnline -Url $Url -Interactive -ClientId $ClientId
             return
         }
 
-        Connect-PnPOnline -Url $Url -ClientId $ClientId -Tenant $TenantId -Thumbprint $CertificateThumbprint
+        # App-only certificate authentication. In Azure the certificate is delivered as a
+        # base64-encoded PKCS#12 blob (resolved from Key Vault through the CertificateBase64
+        # app setting), which works on Linux Functions where the Windows certificate store
+        # used by -Thumbprint is not available. The thumbprint path is kept for local Windows
+        # development where the certificate lives in the user's certificate store.
+        if (-not [System.String]::IsNullOrWhiteSpace($CertificateBase64Encoded)) {
+            Connect-PnPOnline -Url $Url -ClientId $ClientId -Tenant $TenantId -CertificateBase64Encoded $CertificateBase64Encoded
+        }
+        else {
+            Connect-PnPOnline -Url $Url -ClientId $ClientId -Tenant $TenantId -Thumbprint $CertificateThumbprint
+        }
 
         if ($null -eq (Get-PnPContext)) {
             throw "Connection to '$Url' did not establish a PnP context."
@@ -383,7 +421,8 @@ function Invoke-SPSSiteFactoryProvisioning {
         List item id of the request to provision.
 
         .PARAMETER ConnectionParameters
-        Hashtable of app-only connection parameters (TenantId, ClientId, CertificateThumbprint).
+        Hashtable of connection parameters passed to Connect-SPSSiteFactory. Either
+        app-only (TenantId, ClientId, CertificateThumbprint) or @{ UseManagedIdentity = $true }.
 
         .PARAMETER TenantUrl
         Tenant base URL used for communication site creation.
