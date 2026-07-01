@@ -56,6 +56,12 @@ param adminSiteUrl string = ''
 @description('SharePoint tenant base URL, e.g. https://contoso.sharepoint.com.')
 param tenantUrl string = ''
 
+@description('Client id of the SPSSiteFactory-Api app registration used as the Easy Auth audience. Empty leaves App Service Authentication unconfigured.')
+param apiClientId string = ''
+
+@description('App id allowed to call the API through Easy Auth. Defaults to the SharePoint Online Web Client Extensibility principal used by SPFx.')
+param spfxPrincipalAppId string = '08e18876-6177-487e-b8b5-cf950c1e598c'
+
 var storageAccountName = toLower('st${uniqueString(resourceGroup().id, appName)}')
 var hostingPlanName = '${appName}-plan'
 var appInsightsName = '${appName}-ai'
@@ -245,6 +251,50 @@ resource keyVaultSecretsUserAssignment 'Microsoft.Authorization/roleAssignments@
     principalId: functionApp.identity.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsUserRoleId)
+  }
+}
+
+// App Service Authentication (Easy Auth). Requires callers to present a valid Entra
+// token audienced to the SPSSiteFactory-Api app, and restricts callers to the SPFx
+// SharePoint principal. Only configured when apiClientId is supplied.
+resource functionAuth 'Microsoft.Web/sites/config@2023-12-01' = if (!empty(apiClientId)) {
+  parent: functionApp
+  name: 'authsettingsV2'
+  properties: {
+    platform: {
+      enabled: true
+    }
+    globalValidation: {
+      requireAuthentication: true
+      unauthenticatedClientAction: 'Return401'
+    }
+    identityProviders: {
+      azureActiveDirectory: {
+        enabled: true
+        registration: {
+          // SPFx AadHttpClient issues v1 tokens (iss = sts.windows.net), so the Easy Auth
+          // issuer must be the v1 STS endpoint to validate them.
+          openIdIssuer: 'https://sts.windows.net/${subscription().tenantId}/'
+          clientId: apiClientId
+        }
+        validation: {
+          allowedAudiences: [
+            'api://${apiClientId}'
+            apiClientId
+          ]
+          defaultAuthorizationPolicy: {
+            allowedApplications: [
+              spfxPrincipalAppId
+            ]
+          }
+        }
+      }
+    }
+    login: {
+      tokenStore: {
+        enabled: false
+      }
+    }
   }
 }
 
