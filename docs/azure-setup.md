@@ -122,6 +122,57 @@ func azure functionapp publish spssitefactory-func --powershell
 > the reliable app-only path, and keeping the private key in Key Vault (audit, rotation, no
 > cleartext secret in app settings) is the production-grade choice.
 
+## 4. Secure the intake API (Easy Auth + SPFx)
+
+The `SubmitSiteRequest` HTTP trigger uses `authLevel: anonymous` so that **App Service
+Authentication (Easy Auth)** is the single authentication gate. Callers must present a
+valid Entra token audienced to a dedicated API app registration, and only the SharePoint
+SPFx principal is allowed through.
+
+### 4.1 Register the API app (App B)
+
+This is separate from the app-only provisioning app so the user-facing API surface carries
+no application permissions.
+
+```bash
+apiAppId=$(az ad app create --display-name "SPSSiteFactory-Api" \
+  --sign-in-audience AzureADMyOrg --query appId -o tsv)
+az ad app update --id $apiAppId --identifier-uris "api://$apiAppId"
+# Expose a user_impersonation delegated scope (portal: Expose an API), then create the SP:
+az ad sp create --id $apiAppId
+```
+
+### 4.2 Configure Easy Auth
+
+Pass `apiClientId` (App B) to Bicep, or configure it directly. `spfxPrincipalAppId`
+defaults to the SharePoint Online Web Client Extensibility principal
+(`08e18876-6177-487e-b8b5-cf950c1e598c`):
+
+```bash
+az deployment group create -g <resource-group> -f infra/main.bicep \
+  -p appName=spssitefactory-func apiClientId=$apiAppId
+```
+
+The resulting policy: unauthenticated → **401**; valid token from a non-allowed app →
+**403**; valid token from the SPFx principal → the request reaches the function.
+
+### 4.3 Wire and approve the SPFx side
+
+- `config/package-solution.json` requests the API scope:
+
+  ```json
+  "webApiPermissionRequests": [
+    { "resource": "api://<apiAppId>", "scope": "user_impersonation" }
+  ]
+  ```
+
+- After uploading the `.sppkg`, an administrator approves the request in the SharePoint
+  admin center under **Advanced → API access**. This grants the SharePoint principal the
+  `user_impersonation` scope so `AadHttpClient` can obtain tokens.
+- Configure the web part properties: **Provisioning function URL** =
+  `https://<func>.azurewebsites.net/api/submitsiterequest`, **resource URI** =
+  `api://<apiAppId>`.
+
 ## Cost and performance
 
 - `B1` Basic is a small always-on plan suitable for steady low-volume provisioning.
