@@ -10,7 +10,7 @@
     "iconPath": "assets/tile-icon.png",
     "webApiPermissionRequests": [
       {
-        "resource": "SPSSiteFactory",
+        "resource": "api://84cc1473-7901-4aa5-9d42-f3c6084ac3fd",
         "scope": "user_impersonation"
       }
     ],
