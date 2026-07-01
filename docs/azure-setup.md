@@ -64,36 +64,63 @@ writes the certificate files under `scripts/certs/` (gitignored).
 
 ## 3. Configure and deploy the Function app
 
-Set the SharePoint settings on the Function app (if not already passed to Bicep), then
-upload the certificate so app-only authentication can load it.
+On Linux Functions the certificate cannot be loaded from a Windows X509 store, and
+`WEBSITE_LOAD_CERTIFICATES` does not mount it. The Function therefore loads the
+certificate from **Key Vault** at runtime using its managed identity. The Bicep template
+already provisions the vault and grants the identity the **Key Vault Secrets User** role.
+
+Generate the app-only certificate **inside** the vault (its private key never leaves
+Key Vault) and register its public key on the Entra ID application:
 
 ```bash
-az functionapp config appsettings set -g <resource-group> -n spssitefactory-func --settings \
-  TenantId=<tenant-guid> \
-  ClientId=<client-id-from-step-2> \
-  CertificateThumbprint=<thumbprint-from-step-2>
+rg=<resource-group>
+kv=$(az deployment group show -g $rg -n main --query properties.outputs.keyVaultName.value -o tsv)
+appId=<client-id-from-step-2>
 
-# Upload the PFX so WEBSITE_LOAD_CERTIFICATES can load it (or reference Key Vault)
-az functionapp config ssl upload -g <resource-group> -n spssitefactory-func \
-  --certificate-file ./scripts/certs/SPSSiteFactory.pfx --certificate-password <pfx-password>
+# 1. Generate a self-signed certificate in Key Vault
+az keyvault certificate create --vault-name $kv -n spssitefactory-provisioning \
+  -p "$(az keyvault certificate get-default-policy)"
+
+# 2. Download the public key and register it on the app registration
+az keyvault certificate download --vault-name $kv -n spssitefactory-provisioning \
+  -f ./provisioning.cer -e DER
+objId=$(az ad app show --id $appId --query id -o tsv)
+key=$(base64 -i ./provisioning.cer | tr -d '\n')
+az rest --method PATCH --url "https://graph.microsoft.com/v1.0/applications/$objId" \
+  --headers "Content-Type=application/json" \
+  --body "{\"keyCredentials\":[{\"type\":\"AsymmetricX509Cert\",\"usage\":\"Verify\",\"key\":\"$key\",\"displayName\":\"SPSSiteFactory KV cert\"}]}"
+rm ./provisioning.cer
 ```
 
-Deploy the Function code:
+Set the remaining SharePoint settings (if not already passed to Bicep). `CertificateSecretUri`
+is wired by the template, so app-only auth works as soon as the certificate exists:
+
+```bash
+az functionapp config appsettings set -g $rg -n spssitefactory-func --settings \
+  TenantId=<tenant-guid> \
+  ClientId=$appId
+```
+
+Deploy the Function code (the `--powershell` flag is required):
 
 ```bash
 cd functions
-func azure functionapp publish spssitefactory-func
+func azure functionapp publish spssitefactory-func --powershell
 ```
 
 ## Authentication options
 
 | Option | When to use |
 | --- | --- |
-| Certificate app registration | Works in Azure and for local development; certificate rotation required. |
-| Managed Identity | Cleaner in production (no secret rotation). Grant the Function app's system-assigned identity the SharePoint and Graph app roles, then connect with `Connect-PnPOnline -ManagedIdentity`. |
+| **Key Vault certificate** (default in Azure) | The certificate is generated in Key Vault and read at runtime via the Function's managed identity (`CertificateSecretUri` → `Connect-PnPOnline -CertificateBase64Encoded`). Works on Linux Functions and yields both SharePoint REST and Graph tokens. Rotatable without redeploying code. |
+| Certificate thumbprint (local dev) | On a developer Windows machine the certificate lives in the user store and is used with `-Thumbprint`. Not usable on Linux Functions. |
+| Managed Identity only | `Connect-PnPOnline -ManagedIdentity` yields a **Graph-only** token, so SharePoint REST cmdlets (`Get-/Set-PnPListItem`, communication-site creation) return **401**. Insufficient on its own for this workload. |
 
-For V1, the certificate app registration is the simplest single path. Managed Identity is
-recommended as a production hardening step.
+> Why not just upload the PFX to the app service or use `-Thumbprint`? On **Linux** Function
+> Apps there is no Windows certificate store, and `WEBSITE_LOAD_CERTIFICATES` does not mount
+> the certificate under `/var/ssl/private`. Loading the certificate bytes from Key Vault is
+> the reliable app-only path, and keeping the private key in Key Vault (audit, rotation, no
+> cleartext secret in app settings) is the production-grade choice.
 
 ## Cost and performance
 
@@ -112,6 +139,7 @@ enforce Azure Policies that harden storage accounts. The two that affect this pr
 | --- | --- | --- |
 | Storage **shared key access disabled** (`allowSharedKeyAccess = false`) | A classic Windows Consumption Function App fails during creation with `403 Forbidden` because it needs an account-key connection string for its content file share. | The Function uses **identity-based storage** (`AzureWebJobsStorage__accountName` + service URIs) and its managed identity is granted **Storage Blob Data Owner** and **Storage Queue Data Contributor**. No shared key is used. |
 | Windows content file share requires Azure Files with a key | Even with identity-based `AzureWebJobsStorage`, a Windows plan still provisions a content share on Azure Files, which needs a key. | The Function app runs on **Linux** (`kind: functionapp,linux`, `reserved: true`, `linuxFxVersion: POWERSHELL|7.4`), which does not require the Windows content file share. |
+| App-only **certificate** cannot be loaded on Linux | `Connect-PnPOnline -Thumbprint` needs a Windows X509 store, and `WEBSITE_LOAD_CERTIFICATES` does not mount the certificate under `/var/ssl/private` on Function Apps Linux. | The certificate lives in **Key Vault**; the Function reads it via its managed identity (**Key Vault Secrets User**) and connects with `Connect-PnPOnline -CertificateBase64Encoded`. |
 
 If your tenant does **not** enforce these policies, a `Y1` Windows Consumption plan with a
 storage connection string also works and is cheaper. The Linux + managed identity setup is
