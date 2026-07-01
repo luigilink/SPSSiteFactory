@@ -22,10 +22,11 @@ param location string = resourceGroup().location
 
 @description('Hosting plan SKU. Y1 = Consumption (lowest cost), EP1 = Premium (no cold start).')
 @allowed([
+  'B1'
   'Y1'
   'EP1'
 ])
-param planSku string = 'Y1'
+param planSku string = 'B1'
 
 @description('Storage account SKU.')
 param storageSku string = 'Standard_LRS'
@@ -49,7 +50,10 @@ var storageAccountName = toLower('st${uniqueString(resourceGroup().id, appName)}
 var hostingPlanName = '${appName}-plan'
 var appInsightsName = '${appName}-ai'
 var logAnalyticsName = '${appName}-law'
-var contentShareName = toLower(appName)
+
+// Built-in role definition ids for identity-based storage access.
+var storageBlobDataOwnerRoleId = 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
+var storageQueueDataContributorRoleId = '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageAccountName
@@ -61,6 +65,8 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   properties: {
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
+    // Identity-based access only. The tenant policy forbids shared key access.
+    allowSharedKeyAccess: false
     supportsHttpsTrafficOnly: true
   }
 }
@@ -89,17 +95,22 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
 resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: hostingPlanName
   location: location
+  kind: 'linux'
   sku: {
     name: planSku
-    tier: planSku == 'Y1' ? 'Dynamic' : 'ElasticPremium'
+    tier: planSku == 'Y1' ? 'Dynamic' : (planSku == 'EP1' ? 'ElasticPremium' : 'Basic')
   }
-  properties: {}
+  properties: {
+    // Linux plan. Avoids the Windows content file share (Azure Files), which requires
+    // storage shared key access that the tenant policy forbids.
+    reserved: true
+  }
 }
 
 resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: appName
   location: location
-  kind: 'functionapp'
+  kind: 'functionapp,linux'
   identity: {
     type: 'SystemAssigned'
   }
@@ -107,21 +118,28 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     httpsOnly: true
     serverFarmId: hostingPlan.id
     siteConfig: {
-      powerShellVersion: '7.4'
+      linuxFxVersion: 'POWERSHELL|7.4'
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
+      alwaysOn: true
       appSettings: [
         {
-          name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+          // Identity-based AzureWebJobsStorage (no shared key). The function's
+          // system-assigned identity is granted blob and queue data roles below.
+          name: 'AzureWebJobsStorage__accountName'
+          value: storageAccount.name
         }
         {
-          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+          name: 'AzureWebJobsStorage__blobServiceUri'
+          value: 'https://${storageAccount.name}.blob.${environment().suffixes.storage}'
         }
         {
-          name: 'WEBSITE_CONTENTSHARE'
-          value: contentShareName
+          name: 'AzureWebJobsStorage__queueServiceUri'
+          value: 'https://${storageAccount.name}.queue.${environment().suffixes.storage}'
+        }
+        {
+          name: 'AzureWebJobsStorage__tableServiceUri'
+          value: 'https://${storageAccount.name}.table.${environment().suffixes.storage}'
         }
         {
           name: 'FUNCTIONS_EXTENSION_VERSION'
@@ -161,6 +179,28 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
       ]
     }
+  }
+}
+
+// Grant the function's managed identity identity-based access to storage
+// (host metadata in blob, queue triggers in queue) so no shared key is needed.
+resource blobOwnerAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storageAccount.id, functionApp.id, storageBlobDataOwnerRoleId)
+  scope: storageAccount
+  properties: {
+    principalId: functionApp.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataOwnerRoleId)
+  }
+}
+
+resource queueContributorAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storageAccount.id, functionApp.id, storageQueueDataContributorRoleId)
+  scope: storageAccount
+  properties: {
+    principalId: functionApp.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageQueueDataContributorRoleId)
   }
 }
 
