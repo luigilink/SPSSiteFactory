@@ -219,7 +219,7 @@ try {
         ApplicationName                  = $ApplicationName
         Tenant                           = $Tenant
         OutPath                          = $OutPath
-        Interactive                      = $true
+        DeviceLogin                      = $true
         SharePointApplicationPermissions = $sharePointPermissions
         GraphApplicationPermissions      = $graphPermissions
     }
